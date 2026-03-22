@@ -4,11 +4,11 @@ import json
 import logging
 import os
 import sys
-import time
 
 import paho.mqtt.client as mqtt
 
 from watchdog import XZGWatchdog
+from restarter import XZGRestarter
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 
@@ -33,19 +33,27 @@ MQTT_HOST = os.getenv("MQTT_HOST", "localhost")
 MQTT_PORT = int(os.getenv("MQTT_PORT", "1883"))
 MQTT_USER = os.getenv("MQTT_USER", "")
 MQTT_PASS = os.getenv("MQTT_PASS", "")
-XZG_NAME = os.getenv("XZG_NAME")          # e.g. "XZG-1A2B"
+XZG_NAME = os.getenv("XZG_NAME")
+XZG_HOST = os.getenv("XZG_HOST", "")        # IP urządzenia XZG, np. 192.168.1.244
 COOLDOWN = int(os.getenv("RESTART_COOLDOWN_SEC", "120"))
 
 if not XZG_NAME:
-    logger.error("XZG_NAME env var is required (e.g. XZG-1A2B)")
+    logger.error("XZG_NAME env var is required (e.g. UZG-01-BEDA)")
+    sys.exit(1)
+
+if not XZG_HOST:
+    logger.error("XZG_HOST env var is required (e.g. 192.168.1.244)")
     sys.exit(1)
 
 AVTY_TOPIC = f"{XZG_NAME}/avty"
 CMD_TOPIC = f"{XZG_NAME}/cmd"
 
-# ── MQTT callbacks ────────────────────────────────────────────────────────────
+# ── Core objects ──────────────────────────────────────────────────────────────
 
 watchdog = XZGWatchdog(cooldown_seconds=COOLDOWN)
+restarter = XZGRestarter(host=XZG_HOST)
+
+# ── MQTT callbacks ────────────────────────────────────────────────────────────
 
 
 def on_connect(client, userdata, flags, rc, properties=None):
@@ -62,10 +70,19 @@ def on_message(client, userdata, msg):
     logger.debug("← %s: %r", msg.topic, payload)
 
     should_restart = watchdog.on_availability(payload)
-    if should_restart:
-        restart_cmd = json.dumps({"cmd": "rst_esp"})
-        client.publish(CMD_TOPIC, restart_cmd)
-        logger.warning("→ %s: %s  (total restarts: %d)", CMD_TOPIC, restart_cmd, watchdog.restart_count)
+    if not should_restart:
+        return
+
+    logger.warning("Restarting XZG via HTTP (device offline — MQTT cmd won't work)")
+    ok = restarter.restart()
+
+    if not ok:
+        # HTTP failed — last resort: try MQTT anyway (maybe it's a transient state)
+        fallback = json.dumps({"cmd": "rst_esp"})
+        client.publish(CMD_TOPIC, fallback)
+        logger.warning("HTTP failed — sent MQTT fallback → %s: %s", CMD_TOPIC, fallback)
+
+    logger.warning("Total restarts: %d", watchdog.restart_count)
 
 
 def on_disconnect(client, userdata, rc, properties=None):
@@ -77,7 +94,10 @@ def on_disconnect(client, userdata, rc, properties=None):
 
 
 def main():
-    logger.info("XZG Watchdog starting — device=%s cooldown=%ds", XZG_NAME, COOLDOWN)
+    logger.info(
+        "XZG Watchdog starting — device=%s host=%s cooldown=%ds",
+        XZG_NAME, XZG_HOST, COOLDOWN,
+    )
 
     client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2)
     client.on_connect = on_connect

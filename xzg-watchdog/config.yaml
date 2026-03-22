@@ -1,6 +1,6 @@
 name: "XZG Watchdog"
-description: "Automatyczny watchdog dla bramki Zigbee XZG — restartuje przez MQTT gdy offline"
-version: "0.1.0"
+description: "Automatyczny watchdog dla bramki Zigbee XZG — restartuje przez HTTP gdy offline"
+version: "0.2.0"
 slug: "xzg-watchdog"
 init: false
 
@@ -12,6 +12,7 @@ arch:
 
 options:
   xzg_name: "XZG-XXXX"
+  xzg_host: "192.168.1.x"
   mqtt_host: "core-mosquitto"
   mqtt_port: 1883
   mqtt_user: ""
@@ -21,6 +22,7 @@ options:
 
 schema:
   xzg_name: str
+  xzg_host: str
   mqtt_host: str
   mqtt_port: int
   mqtt_user: str
