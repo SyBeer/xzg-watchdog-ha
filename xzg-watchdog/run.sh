@@ -2,6 +2,8 @@
 
 export XZG_NAME=$(bashio::config 'xzg_name')
 export XZG_HOST=$(bashio::config 'xzg_host')
+export XZG_USER=$(bashio::config 'xzg_user')
+export XZG_PASS=$(bashio::config 'xzg_pass')
 export MQTT_HOST=$(bashio::config 'mqtt_host')
 export MQTT_PORT=$(bashio::config 'mqtt_port')
 export MQTT_USER=$(bashio::config 'mqtt_user')

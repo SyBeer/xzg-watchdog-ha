@@ -36,6 +36,8 @@ MQTT_USER = os.getenv("MQTT_USER", "")
 MQTT_PASS = os.getenv("MQTT_PASS", "")
 XZG_NAME = os.getenv("XZG_NAME")
 XZG_HOST = os.getenv("XZG_HOST", "")
+XZG_USER = os.getenv("XZG_USER", "")
+XZG_PASS = os.getenv("XZG_PASS", "")
 COOLDOWN = int(os.getenv("RESTART_COOLDOWN_SEC", "120"))
 PERIODIC_HOURS = float(os.getenv("RESTART_INTERVAL_HOURS", "0"))
 
@@ -55,7 +57,7 @@ DISCOVERY_TOPIC = "homeassistant/button/xzg_watchdog/restart/config"
 # ── Core objects ──────────────────────────────────────────────────────────────
 
 watchdog = XZGWatchdog(cooldown_seconds=COOLDOWN, periodic_interval_hours=PERIODIC_HOURS)
-restarter = XZGRestarter(host=XZG_HOST)
+restarter = XZGRestarter(host=XZG_HOST, username=XZG_USER, password=XZG_PASS)
 
 # ── Restart helper ────────────────────────────────────────────────────────────
 
