@@ -3,6 +3,7 @@ description: "Automatyczny watchdog dla bramki Zigbee XZG — restartuje przez H
 version: "0.3.0"
 slug: "xzg-watchdog"
 init: false
+host_network: true
 
 arch:
   - aarch64

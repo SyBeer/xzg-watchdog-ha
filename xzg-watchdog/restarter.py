@@ -22,9 +22,13 @@ class XZGRestarter:
         """Send HTTP restart command to XZG. Returns True on success."""
         url = self.restart_url
         try:
-            req = urllib.request.Request(url, method="GET")
+            req = urllib.request.Request(url, method="GET", headers={
+                "User-Agent": "Mozilla/5.0",
+                "Accept": "*/*",
+            })
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
-                logger.warning("HTTP restart sent → %s (status %s)", url, resp.status)
+                body = resp.read().decode("utf-8", errors="replace").strip()
+                logger.warning("HTTP restart sent → %s (status %s, body: %r)", url, resp.status, body)
                 return True
         except Exception as e:
             logger.error("HTTP restart failed → %s: %s", url, e)
