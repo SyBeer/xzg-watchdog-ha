@@ -25,6 +25,9 @@ class XZGRestarter:
             req = urllib.request.Request(url, method="GET", headers={
                 "User-Agent": "Mozilla/5.0",
                 "Accept": "*/*",
+                "Accept-Encoding": "identity",
+                "Referer": f"http://{self.host}/",
+                "X-Requested-With": "XMLHttpRequest",
             })
             with urllib.request.urlopen(req, timeout=self.timeout) as resp:
                 body = resp.read().decode("utf-8", errors="replace").strip()

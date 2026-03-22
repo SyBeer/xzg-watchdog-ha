@@ -1,6 +1,6 @@
 name: "XZG Watchdog"
 description: "Automatyczny watchdog dla bramki Zigbee XZG — restartuje przez HTTP gdy offline"
-version: "0.3.0"
+version: "0.3.1"
 slug: "xzg-watchdog"
 init: false
 host_network: true

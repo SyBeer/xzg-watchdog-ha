@@ -60,14 +60,20 @@ restarter = XZGRestarter(host=XZG_HOST)
 # ── Restart helper ────────────────────────────────────────────────────────────
 
 
+_manual_restart_count = 0
+
+
 def do_restart(client, reason: str):
+    global _manual_restart_count
     logger.warning("Restarting XZG — reason: %s", reason)
     ok = restarter.restart()
     if not ok:
         fallback = json.dumps({"cmd": "rst_esp"})
         client.publish(CMD_TOPIC, fallback)
         logger.warning("HTTP failed — sent MQTT fallback → %s", CMD_TOPIC)
-    logger.warning("Total restarts: %d", watchdog.restart_count)
+    _manual_restart_count += 1
+    logger.warning("Total restarts (auto: %d, manual: %d)",
+                   watchdog.restart_count, _manual_restart_count)
 
 
 # ── MQTT callbacks ────────────────────────────────────────────────────────────
