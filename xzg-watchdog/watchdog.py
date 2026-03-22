@@ -9,10 +9,13 @@ logger = logging.getLogger(__name__)
 class XZGWatchdog:
     """Monitors XZG availability and triggers restart on disconnect."""
 
-    def __init__(self, cooldown_seconds: int = 60):
+    def __init__(self, cooldown_seconds: int = 60, periodic_interval_hours: float = 0):
         self.cooldown_seconds = cooldown_seconds
+        self.periodic_interval_seconds = periodic_interval_hours * 3600
         self._last_restart_at: float | None = None
         self._restart_count = 0
+        self._periodic_initialized_at: float | None = None
+        self._last_periodic_restart_at: float | None = None
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -59,3 +62,18 @@ class XZGWatchdog:
         if self._last_restart_at is None:
             return True
         return (time.monotonic() - self._last_restart_at) >= self.cooldown_seconds
+
+    def should_periodic_restart(self) -> bool:
+        """Returns True if it's time for a scheduled periodic restart."""
+        if self.periodic_interval_seconds <= 0:
+            return False
+        now = time.monotonic()
+        if self._periodic_initialized_at is None:
+            self._periodic_initialized_at = now
+            return False
+        ref = self._last_periodic_restart_at or self._periodic_initialized_at
+        return (now - ref) >= self.periodic_interval_seconds
+
+    def on_periodic_restart(self):
+        """Call after performing a periodic restart to reset the timer."""
+        self._last_periodic_restart_at = time.monotonic()

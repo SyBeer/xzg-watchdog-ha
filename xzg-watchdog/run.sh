@@ -7,6 +7,7 @@ export MQTT_PORT=$(bashio::config 'mqtt_port')
 export MQTT_USER=$(bashio::config 'mqtt_user')
 export MQTT_PASS=$(bashio::config 'mqtt_pass')
 export RESTART_COOLDOWN_SEC=$(bashio::config 'restart_cooldown_sec')
+export RESTART_INTERVAL_HOURS=$(bashio::config 'restart_interval_hours')
 export LOG_LEVEL=$(bashio::config 'log_level' | tr '[:lower:]' '[:upper:]')
 
 bashio::log.info "Starting XZG Watchdog for device: ${XZG_NAME} (${XZG_HOST})"
