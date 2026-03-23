@@ -40,6 +40,7 @@ XZG_USER = os.getenv("XZG_USER", "")
 XZG_PASS = os.getenv("XZG_PASS", "")
 COOLDOWN = int(os.getenv("RESTART_COOLDOWN_SEC", "120"))
 PERIODIC_HOURS = float(os.getenv("RESTART_INTERVAL_HOURS", "0"))
+RESTART_TIME = os.getenv("RESTART_TIME", "")
 
 if not XZG_NAME:
     logger.error("XZG_NAME env var is required (e.g. UZG-01-BEDA)")
@@ -56,7 +57,11 @@ DISCOVERY_TOPIC = "homeassistant/button/xzg_watchdog/restart/config"
 
 # ── Core objects ──────────────────────────────────────────────────────────────
 
-watchdog = XZGWatchdog(cooldown_seconds=COOLDOWN, periodic_interval_hours=PERIODIC_HOURS)
+watchdog = XZGWatchdog(
+    cooldown_seconds=COOLDOWN,
+    periodic_interval_hours=PERIODIC_HOURS,
+    restart_time=RESTART_TIME,
+)
 restarter = XZGRestarter(host=XZG_HOST, username=XZG_USER, password=XZG_PASS)
 
 # ── Restart helper ────────────────────────────────────────────────────────────
@@ -137,12 +142,18 @@ def _periodic_loop(client):
     watchdog.should_periodic_restart()  # initialize timer
     if PERIODIC_HOURS > 0:
         logger.info("Periodic restart enabled every %.1f h", PERIODIC_HOURS)
+    if RESTART_TIME:
+        logger.info("Scheduled restart enabled at %s daily", RESTART_TIME)
     while True:
         time.sleep(60)
         if watchdog.should_periodic_restart():
             logger.warning("Periodic restart triggered (interval=%.1fh)", PERIODIC_HOURS)
             watchdog.on_periodic_restart()
             do_restart(client, f"periodic ({PERIODIC_HOURS}h interval)")
+        if watchdog.should_restart_at_time():
+            logger.warning("Scheduled restart triggered (time=%s)", RESTART_TIME)
+            watchdog.on_scheduled_restart()
+            do_restart(client, f"scheduled at {RESTART_TIME}")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────

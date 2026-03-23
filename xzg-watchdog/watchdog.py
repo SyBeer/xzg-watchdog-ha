@@ -2,6 +2,7 @@
 
 import logging
 import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -9,13 +10,20 @@ logger = logging.getLogger(__name__)
 class XZGWatchdog:
     """Monitors XZG availability and triggers restart on disconnect."""
 
-    def __init__(self, cooldown_seconds: int = 60, periodic_interval_hours: float = 0):
+    def __init__(
+        self,
+        cooldown_seconds: int = 60,
+        periodic_interval_hours: float = 0,
+        restart_time: str = "",
+    ):
         self.cooldown_seconds = cooldown_seconds
         self.periodic_interval_seconds = periodic_interval_hours * 3600
+        self._restart_time = self._parse_time(restart_time)
         self._last_restart_at: float | None = None
         self._restart_count = 0
         self._periodic_initialized_at: float | None = None
         self._last_periodic_restart_at: float | None = None
+        self._last_scheduled_restart_date: object | None = None  # date object
 
     # ── Public API ────────────────────────────────────────────────────────────
 
@@ -45,6 +53,38 @@ class XZGWatchdog:
             return None
         return time.monotonic() - self._last_restart_at
 
+    def should_periodic_restart(self) -> bool:
+        """Returns True if it's time for a scheduled periodic restart."""
+        if self.periodic_interval_seconds <= 0:
+            return False
+        now = time.monotonic()
+        if self._periodic_initialized_at is None:
+            self._periodic_initialized_at = now
+            return False
+        ref = self._last_periodic_restart_at or self._periodic_initialized_at
+        return (now - ref) >= self.periodic_interval_seconds
+
+    def on_periodic_restart(self):
+        """Call after performing a periodic restart to reset the timer."""
+        self._last_periodic_restart_at = time.monotonic()
+
+    def should_restart_at_time(self) -> bool:
+        """Returns True if current time matches restart_time and not yet triggered today."""
+        if self._restart_time is None:
+            return False
+        now = datetime.now()
+        target_h, target_m = self._restart_time
+        if now.hour != target_h or now.minute != target_m:
+            return False
+        today = now.date()
+        if self._last_scheduled_restart_date == today:
+            return False
+        return True
+
+    def on_scheduled_restart(self):
+        """Call after performing a scheduled time-based restart."""
+        self._last_scheduled_restart_date = datetime.now().date()
+
     # ── Internal ──────────────────────────────────────────────────────────────
 
     def _handle_offline(self) -> bool:
@@ -63,17 +103,15 @@ class XZGWatchdog:
             return True
         return (time.monotonic() - self._last_restart_at) >= self.cooldown_seconds
 
-    def should_periodic_restart(self) -> bool:
-        """Returns True if it's time for a scheduled periodic restart."""
-        if self.periodic_interval_seconds <= 0:
-            return False
-        now = time.monotonic()
-        if self._periodic_initialized_at is None:
-            self._periodic_initialized_at = now
-            return False
-        ref = self._last_periodic_restart_at or self._periodic_initialized_at
-        return (now - ref) >= self.periodic_interval_seconds
-
-    def on_periodic_restart(self):
-        """Call after performing a periodic restart to reset the timer."""
-        self._last_periodic_restart_at = time.monotonic()
+    @staticmethod
+    def _parse_time(value: str) -> tuple[int, int] | None:
+        if not value or ":" not in value:
+            return None
+        try:
+            h, m = value.strip().split(":")
+            h, m = int(h), int(m)
+            if not (0 <= h <= 23 and 0 <= m <= 59):
+                return None
+            return h, m
+        except (ValueError, TypeError):
+            return None
